@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Vyxel Voice Chat</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
+    <style>
+        body { background: #121212; color: #00ff00; font-family: 'Courier New', monospace; text-align: center; padding: 20px; }
+        .card { border: 2px solid #00ff00; padding: 20px; border-radius: 10px; background: #1a1a1a; box-shadow: 0 0 15px #00ff00; }
+        h1 { text-transform: uppercase; letter-spacing: 5px; }
+        #status { color: #fff; margin: 15px 0; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>Vyxel Chat</h1>
+        <p>RE-CONNECTING TO MINECRAFT...</p>
+        <div id="status">Loading Microphone...</div>
+        <div id="distance-info">Waiting for player data...</div>
+    </div>
+
+    <script>
+        const socket = io();
+        const myPeer = new Peer();
+        let myName = prompt("Enter your Minecraft Username exactly:");
+        
+        navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+            document.getElementById('status').innerText = "🎤 MIC ACTIVE";
+            
+            myPeer.on('call', call => {
+                call.answer(stream);
+                call.on('stream', userStream => { playAudio(userStream); });
+            });
+
+            socket.on('user-connected', userId => {
+                const call = myPeer.call(userId, stream);
+                call.on('stream', userStream => { playAudio(userStream); });
+            });
+        });
+
+        myPeer.on('open', id => {
+            socket.emit('join-room', 'default-room', id);
+        });
+
+        function playAudio(stream) {
+            const audio = document.createElement('audio');
+            audio.srcObject = stream;
+            audio.play();
+        }
+
+        socket.on('pos_update', (data) => {
+            if (data.user !== myName) {
+                document.getElementById('distance-info').innerText = `Player ${data.user} is nearby!`;
+            }
+        });
+    </script>
+</body>
+</html>
